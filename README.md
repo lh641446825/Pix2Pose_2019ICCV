@@ -2,6 +2,7 @@
 
 > <font
 > size=4> 论文地址：http://openaccess.thecvf.com/content_ICCV_2019/papers/Park_Pix2Pose_Pixel-Wise_Coordinate_Regression_of_Objects_for_6D_Pose_Estimation_ICCV_2019_paper.pdf
+
 > <font
 > size=4> github链接：https://github.com/kirumang/Pix2Pose
 
@@ -21,14 +22,19 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 
 <font size=4>**作者提出目前方法的缺点：**
 <font size=4> &#160; &#160; &#160; &#160;1.使用CNN的方法来直接预测投影点的三维边界框，视点以及四元数转换。这些方法都是直接计算的。缺点是缺乏对应关系，这些关系可用于生成多个位姿假设，对被遮挡物体进行鲁棒的估计。对称物体通常通过限制视点范围，这样会增加额外的处理，例如BB8对视图范围进行分类，PoseCNN计算转换后的模型在估计位姿和标注位姿中到最近点的平均距离。然而寻找最近的三维点很耗时。
+  
 <font size=4> &#160; &#160; &#160; &#160;2.特征匹配法：AAE只使用RGB图像无监督训练位姿的隐式表示，隐式表示可以接近任何对称的视图，然而使用给定一个好的旋转估计的渲染模板很难指定三维平移。利用二维边界框的大小来计算三维平移的z分量，一旦二维边界框有较小的误差，则影响三维平移。
+  
 <font size=4> &#160; &#160; &#160; &#160;3.预测物体空间中像素或局部形状的三维位置。通过对每个像素回归三维坐标并预测类别。这种方法速度较慢。作者使用了一个独立的2D检测网络来提供目标物体的感兴趣区域。
+  
 <font size=4> &#160; &#160; &#160; &#160;4.使用自编码的方法生成模型，以对模型去噪、恢复图像缺失的部分。**作者训练了一个带有GAN的自编码网络，可以像图像间转换那样精确的将彩色图像转换为坐标值，像图像绘制那样恢复被遮挡的部分。**
 
 ## 创新点
 
 <font size=4>1.提出新的框架：pix2pose，使用无纹理三维模型从RGB回归像素级三维坐标。
+  
 <font size=4>2.提出新的损失函数：transformer loss，用于处理有限个模糊视图的对称物体。
+  
 <font size=4>3.在LineMOD、LineMOD Occlusion和T-Less上，即使遇到遮挡和对称问题，效果sota。
 
 ## 网络结构
@@ -46,21 +52,31 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ## 损失函数
 
 <font size=4> &#160; &#160; &#160; &#160;在三维坐标回归重建目标图像时，使用每个像素的平均L1距离，由于物体的像素比背景更重要，物体mask的误差由mask中的权重误差乘  β因子。basic reconstruction loss：
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192550552.png#pic_center)
+
 <font size=4> &#160; &#160; &#160; &#160;其中n是像素的数量，Igt表示目标图像的第i个像素，M是目标图像中完全可见物体的mask，mask也包含遮挡部分，用于预测被遮挡物体的不可见部分的值，从而实现被遮挡物体的鲁棒估计。
 <font size=4> &#160; &#160; &#160; &#160;上述loss不能处理对称物体，因为其惩罚3维空间中距离较大的像素，没有对称的先验知识。将三维变换矩阵乘上目标图像，可以将每个像素的三维坐标转换成对称位姿。使用候选对称位姿中误差最小的位姿来计算损失函数，transformer loss：
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192600524.png#pic_center)
+
 <font size=4> &#160; &#160; &#160; &#160;其中Rp是一个位姿到对称位姿的转换，这种损失函数适用于具有有限个对称位姿的目标物体。
 <font size=4>transformer loss的效果如下：
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192809339.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+
 <font size=4> &#160; &#160; &#160; &#160;图中可以看出L1 loss在π附近产生了较大的errors；而transformer loss在0到π范围内产生最小值，预计为obj-05的对称角为π。
 <font size=4>预测误差计算预测图像与目标图像之间的差异，error prediction loss：
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192512812.png#pic_center)
+
 <font size=4> &#160; &#160; &#160; &#160;GAN网络能够使用另一个领域的图像生成目标领域中更精确真实的图像，论文中将RGB图像转换为3维坐标图，可以使用GAN网络实现。鉴别器网络能够分辨3维坐标图像是由模型渲染的还是估计的。GAN网络的损失函数为：
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192454171.png#pic_center)
 <font size=4>其中D为鉴别网络。
 <font size=4> &#160; &#160; &#160; &#160;**总的损失函数为：**
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192438370.png#pic_center)
+
 <font size=4> 其中λ1和λ2用于平衡不同的任务。文中后面提到λ1=100，λ2=50.
 
 ## 位姿预测过程
