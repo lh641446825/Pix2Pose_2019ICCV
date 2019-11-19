@@ -62,6 +62,7 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192550552.png#pic_center)
 
 <font size=4> &#160; &#160; &#160; &#160;其中n是像素的数量，Igt表示目标图像的第i个像素，M是目标图像中完全可见物体的mask，mask也包含遮挡部分，用于预测被遮挡物体的不可见部分的值，从而实现被遮挡物体的鲁棒估计。
+  
 <font size=4> &#160; &#160; &#160; &#160;上述loss不能处理对称物体，因为其惩罚3维空间中距离较大的像素，没有对称的先验知识。将三维变换矩阵乘上目标图像，可以将每个像素的三维坐标转换成对称位姿。使用候选对称位姿中误差最小的位姿来计算损失函数，transformer loss：
   
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192600524.png#pic_center)
@@ -72,13 +73,17 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117132628.png)
 
 <font size=4> &#160; &#160; &#160; &#160;图中可以看出L1 loss在π附近产生了较大的errors；而transformer loss在0到π范围内产生最小值，预计为obj-05的对称角为π。
+  
 <font size=4>预测误差计算预测图像与目标图像之间的差异，error prediction loss：
   
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192512812.png#pic_center)
 
 <font size=4> &#160; &#160; &#160; &#160;GAN网络能够使用另一个领域的图像生成目标领域中更精确真实的图像，论文中将RGB图像转换为3维坐标图，可以使用GAN网络实现。鉴别器网络能够分辨3维坐标图像是由模型渲染的还是估计的。GAN网络的损失函数为：
+  
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192454171.png#pic_center)
+  
 <font size=4>其中D为鉴别网络。
+  
 <font size=4> &#160; &#160; &#160; &#160;**总的损失函数为：**
   
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192438370.png#pic_center)
@@ -96,12 +101,15 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 > <font size=4>In this stage, the predicted coordinate image I3D is used for specifying pixels that belong to the object including the occluded parts by taking pixels with non-zero values.
 
 <font size=4> &#160; &#160; &#160; &#160;所预测的坐标图像I3D通过取非零值的像素来指定包括遮挡部分的物体像素。如果像素的误差预测大于外点阈值θo，则使用预测误差来移除不确定的像素。物体有效的mask通过非零值的像素单元和误差小于θo的像素来计算。边界框的新中心由有效mask的形心来确定。第一阶段的输出是细化的输入，它只包含从新边界框中裁剪的有效mask的像素。当误差预测小于外点阈值θo时，细化的输入可能包含遮挡部分，这就意味着尽管有遮挡，这些像素的坐标依然很容易预测。**外点阈值θo由三个值决定，目的是包括更多的可见像素，使用人工遮挡的训练图来去除噪点像素。**
+  
 <font size=4> &#160; &#160; &#160; &#160;第二阶段：使用第一阶段细化后的图像预测最终的位姿和期望误差。当预测误差大于内点阈值θi时，三维坐标样本中的黑色像素表示点被移除，即使点有非零坐标值。换句话说，具有非零坐标值且误差预测小于阈值θi的像素用来构建2D-3D的对应关系。图像中每个像素已经具有物体坐标中三维点的值，所以二维图像坐标和预测三维坐标直接形成对应。之后利用带有RANSAC的PnP算法，通过最大化内点数量迭代计算最终位姿，内点的二维投影误差比阈值θre更小。
+  
 <font size=4> &#160; &#160; &#160; &#160;pix2pose对T-LESS数据集进行评估优点显著，因为T-LESS提供了无纹理CAD模型，而且大多数物体都是对称的，在工业领域更常见。作者将物体的图像从真实图像中提取出来粘贴到COCO数据集中，对图像进行颜色增强处理后，将物体与背景之间的边界进行模糊处理，使边界平滑。用背景图像代替物体区域的一部分来模拟遮挡，最后对增强后的彩色图像和目标坐标图像进行随机旋转。使用Resnet-101的Faster R-CNN和Resnet-50的Retinanet来预测检测到的物体类别，使用COCO数据集的预训练权重对网络进行初始化。
 
 ## 度量指标
 
 <font size=4> &#160; &#160; &#160; &#160;对于LineMOD数据集，使用AD{D|I}进行度量，测量ground truth位姿与估计位姿之间顶点的平均距离，对称物体则使用到最近顶点的平均距离，当误差小于物体最大三维直径的1/10时，位姿是正确的。
+  
 <font size=4> &#160; &#160; &#160; &#160;对于T-LESS数据集，使用可视表面偏差(VSD)作为度量，只度量可见部分的距离误差，使得度量不受对称和遮挡的影响。
 
 ## 实验和结果
@@ -111,17 +119,21 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117131405.png)
 
 <font size=4> 在不使用细化的方法中，作者的方法处理对称物体的效果最好。
+  
 <font size=4>在LineMOD Occlusion数据集上的结果如下图：
   
 ![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117131555.png)
 
 <font size=4> pix2pose的效果明显优于yolo-6d，在八种物体中有三种的效果sota。
+  
 <font size=4> 在T-Less数据集上的结果如下图：
   
 ![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117132130.png)
 
 <font size=4>作者的方法优于现有的使用RGB和RGB-D的方法。
+  
 <font size=4> &#160; &#160; &#160; &#160;**文中没有对比PVNet**，可能是因为ICCV是三月截稿，作者没来得及对比。
+  
 <font size=4>PVNet在遮挡数据集上的ADD(-S)实验结果为：
   
 ![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117154400.png)
