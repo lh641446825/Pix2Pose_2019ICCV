@@ -69,7 +69,7 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 <font size=4> &#160; &#160; &#160; &#160;其中Rp是一个位姿到对称位姿的转换，这种损失函数适用于具有有限个对称位姿的目标物体。
 <font size=4>transformer loss的效果如下：
   
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192809339.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117132628.png)
 
 <font size=4> &#160; &#160; &#160; &#160;图中可以看出L1 loss在π附近产生了较大的errors；而transformer loss在0到π范围内产生最小值，预计为obj-05的对称角为π。
 <font size=4>预测误差计算预测图像与目标图像之间的差异，error prediction loss：
@@ -89,7 +89,7 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 
 <font size=4> &#160; &#160; &#160; &#160;首先使用每个边界框的中心、宽高来剪裁感兴趣区域，调整输入大小为128×128px，然后**将他们乘以1.5，防止剪裁区域包括被遮挡部分**。论文中的位姿预测分为两个阶段，如下图所示：
   
-![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191111164732.png）
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191111164732.png)
 
 <font size=4> &#160; &#160; &#160; &#160;第一阶段：由于2维目标检测方法不同，可能导致物体偏移，将边界框与物体中心对齐，消除背景和不确定像素。
 
@@ -112,14 +112,20 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 
 <font size=4> 在不使用细化的方法中，作者的方法处理对称物体的效果最好。
 <font size=4>在LineMOD Occlusion数据集上的结果如下图：
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192918710.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117131555.png)
+
 <font size=4> pix2pose的效果明显优于yolo-6d，在八种物体中有三种的效果sota。
 <font size=4> 在T-Less数据集上的结果如下图：
-![在这里插入图片描述](https://img-blog.csdnimg.cn/2019111719293778.png#pic_center)
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117132130.png)
+
 <font size=4>作者的方法优于现有的使用RGB和RGB-D的方法。
 <font size=4> &#160; &#160; &#160; &#160;**文中没有对比PVNet**，可能是因为ICCV是三月截稿，作者没来得及对比。
 <font size=4>PVNet在遮挡数据集上的ADD(-S)实验结果为：
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192949524.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117154400.png)
+
 <font size=4> &#160; &#160; &#160; &#160;可以看出，在遮挡数据集上，pix2pose算法的ADD(-S)实验结果在平均准确率上低于PVNet的实验结果，目标物体eggbox的实验结果差距较大。
 
 <font size=4> &#160; &#160; &#160; &#160;最近比较忙，所以更新可能稍微慢一些，目前正在测试这篇论文的代码，还有一部分关于Ablation studies的，过几天补更。感谢关注！
