@@ -13,14 +13,17 @@
 ## 之前的工作介绍
 
 <font size=4> &#160; &#160; &#160; &#160;虽然深度图能够提供精确的三维像素坐标，但是获得深度图并不容易。大量的位姿估计依赖于物体的纹理三维模型，需要使用三维扫描设备生成模型。然而却不适用于没有纹理三维模型的领域。之前的工作来处理对称物体：在渲染训练图像时限制位姿的范围，或者对于带注释的真实图像，将范围外的位姿转换为范围内的对称位姿。这种方法适用于单轴对称的物体，只需忽略围绕轴的旋转即可。
+  
 <font size=4> &#160; &#160; &#160; &#160;然而BB8中指出当仅有有限数量对称位姿时，很难确定视图边界附近的位姿。文中给的例子是：
 
 > <font size=4>if a box has an angle of symmetry, π, with respect to an axis and a view limit between 0 and π, the pose at π + α(α≈ 0; α > 0) has to be transformed to a symmetric pose at α even if the detailed appearance is closer to a pose at π.
 
 <font size=4> &#160; &#160; &#160; &#160;**如果边界框相对于轴具有对称角π，并且视限在0和π之间，则必须将π+α（α≈0;α> 0）处的位姿转换为α处的对称位姿，即使α足够小，使外观很接近于π位置的位姿。**
+  
 pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使用无纹理三维模型从RGB图像回归像素级三维坐标。新的损失函数处理有限个模糊视图的对称物体。
 
 <font size=4>**作者提出目前方法的缺点：**
+  
 <font size=4> &#160; &#160; &#160; &#160;1.使用CNN的方法来直接预测投影点的三维边界框，视点以及四元数转换。这些方法都是直接计算的。缺点是缺乏对应关系，这些关系可用于生成多个位姿假设，对被遮挡物体进行鲁棒的估计。对称物体通常通过限制视点范围，这样会增加额外的处理，例如BB8对视图范围进行分类，PoseCNN计算转换后的模型在估计位姿和标注位姿中到最近点的平均距离。然而寻找最近的三维点很耗时。
   
 <font size=4> &#160; &#160; &#160; &#160;2.特征匹配法：AAE只使用RGB图像无监督训练位姿的隐式表示，隐式表示可以接近任何对称的视图，然而使用给定一个好的旋转估计的渲染模板很难指定三维平移。利用二维边界框的大小来计算三维平移的z分量，一旦二维边界框有较小的误差，则影响三维平移。
@@ -38,11 +41,14 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 <font size=4>3.在LineMOD、LineMOD Occlusion和T-Less上，即使遇到遮挡和对称问题，效果sota。
 
 ## 网络结构
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192723153.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191111103153.png)
 
 <font size=4> &#160; &#160; &#160; &#160;网络输入一张剪裁后的图像Is，输出是物体坐标中每个像素的归一化三维坐标I3D和每个预测的估计误差Ie。Ie将每个像素作为一个置信度，在进行位姿计算之前，直接用来确定内点和外点像素。目标输出包括被遮挡部分的坐标预测，由于坐标由三个值组成，和RGB值相似，因此可以将输出看作彩色图像，从而通过在ground truth位姿中渲染彩色坐标模型，即可得到ground truth 的输出，如下图所示。
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192741234.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191111104311.png)
+
 <font size=4> &#160; &#160; &#160; &#160;即将每个顶点的归一化坐标直接映射到颜色空间中的红绿蓝值，建立每个像素的2D-3D对应，不需要特征匹配。
+  
 <font size=4> &#160; &#160; &#160; &#160;卷积核的大小和前四个卷积层与AAE中是相同的。
 
 > <font size=4>To maintain details of low-level feature maps, skip connections are added by copying the half channels of outputs from the first three layers to the corresponding symmetric layers in the decoder, which results in more precise estimation of pixels around geometrical boundaries.
@@ -82,6 +88,8 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ## 位姿预测过程
 
 <font size=4> &#160; &#160; &#160; &#160;首先使用每个边界框的中心、宽高来剪裁感兴趣区域，调整输入大小为128×128px，然后**将他们乘以1.5，防止剪裁区域包括被遮挡部分**。论文中的位姿预测分为两个阶段，如下图所示：
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191111164732.png）
 
 <font size=4> &#160; &#160; &#160; &#160;第一阶段：由于2维目标检测方法不同，可能导致物体偏移，将边界框与物体中心对齐，消除背景和不确定像素。
 
@@ -99,7 +107,9 @@ pix2pose通过隐式估计被遮挡像素的三维坐标，实现鲁棒性。使
 ## 实验和结果
 
 <font size=4> 在LineMOD数据集上的结果如下图：
-![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192857963.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
+  
+![在这里插入图片描述](https://github.com/lh641446825/picture/blob/master/QQ%E6%B5%8F%E8%A7%88%E5%99%A8%E6%88%AA%E5%9B%BE20191117131405.png)
+
 <font size=4> 在不使用细化的方法中，作者的方法处理对称物体的效果最好。
 <font size=4>在LineMOD Occlusion数据集上的结果如下图：
 ![在这里插入图片描述](https://img-blog.csdnimg.cn/20191117192918710.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L2xoNjQxNDQ2ODI1,size_16,color_FFFFFF,t_70#pic_center)
